@@ -14,6 +14,9 @@ contract WithdrawalsVerifier {
     /// @notice Emitted when a withdrawal is submitted
     event WithdrawalSubmitted(uint64 indexed validatorIndex, uint64 amount);
 
+    error BranchHasMissingItem();
+    error BranchHasExtraItem();
+
     constructor(address _mockBlockRoot, uint64 _gIndex) {
         mockBlockRoot = BlockRootMock(_mockBlockRoot);
         gIndex = _gIndex;
@@ -77,9 +80,13 @@ contract WithdrawalsVerifier {
                 for { } 1 { } {
                     // Slot of `leaf` in scratch space.
                     // If the condition is true: 0x20, otherwise: 0x00.
-                    // let scratch := shl(5, gt(leaf, mload(offset)))
                     let scratch := shl(5, and(index, 1))
                     index := shr(1, index)
+                    if iszero(index) {
+                        // revert BranchHasExtraItem()
+                        mstore(0x00, 0x5849603f)
+                        revert(0x1c, 0x04)
+                    }
                     // Store elements to hash contiguously in scratch space.
                     // Scratch space is 64 bytes (0x00 - 0x3f) and both elements are 32 bytes.
                     mstore(scratch, leaf)
@@ -101,6 +108,11 @@ contract WithdrawalsVerifier {
                     offset := add(offset, 0x20)
                     if iszero(lt(offset, end)) { break }
                 }
+            }
+            if gt(sub(index, 1), 0) {  // index != 1
+                // revert BranchHasMissingItem()
+                mstore(0x00, 0x1b6661c3)
+                revert(0x1c, 0x04)
             }
             isValid := eq(leaf, root)
         }
