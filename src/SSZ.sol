@@ -70,35 +70,65 @@ library SSZ {
         return bytes32(v);
     }
 
-    /// Pure and ugly ChatGPT implementation
-    // TODO: rewrite it, yul?
+    // Even uglier implementation in Yul
     function rootOfBytes32List(bytes32[] memory values)
         internal
-        pure
-        returns (bytes32)
+        view
+        returns (bytes32 ret)
     {
-        uint256 length = values.length;
-        if (length == 0) {
-            return bytes32(0);
-        }
-        uint256 i = length - 1;
-        uint256 j = i;
-        uint256 k = 1;
-        while (j > 0) {
-            j >>= 1;
-            k <<= 1;
-        }
-        bytes32[] memory temp = new bytes32[](k);
-        for (j = 0; j < length; j++) {
-            temp[j] = values[j];
-        }
-        while (i > 0) {
-            for (j = 0; j < i; j += 2) {
-                temp[j >> 1] = sha256(abi.encodePacked(temp[j], temp[j + 1]));
+        bytes32 lengthMixin = toLittleEndian(values.length);
+        /// @solidity memory-safe-assembly
+        assembly {
+            if mload(values) {
+                let l := mload(values)
+                // Calculate width of the tree aligned to a power of 2
+                let i := sub(l, 1)
+                let w := 1
+                for { } 1 { } {
+                    w := shl(1, w)
+                    i := shr(1, i)
+                    if iszero(i) { break }
+                }
+                // Set `ptr` to point to the start of the free memory
+                let ptr := mload(0x40)
+                // Copy the values to the free memory
+                let b := add(values, 0x20)
+                for { i := 0 } lt(i, l) { i := add(i, 1) } {
+                    mstore(ptr, mload(b))
+                    ptr := add(ptr, 0x20)
+                    b := add(b, 0x20)
+                }
+                ptr := mload(0x40)
+                // Shift memory pointer
+                // Calculate the root
+                for { } 1 { } {
+                    let leaf := ptr
+                    let next := ptr
+                    let end := add(ptr, shl(5, w))
+                    for { } lt(leaf, end) { } {
+                        if eq(w, 1) {
+                            mstore(add(leaf, 0x20), lengthMixin)
+                        }
+                        let result :=
+                            staticcall(gas(), 0x02, leaf, 0x40, next, 0x20)
+                        // The branch below is copied from https://stackoverflow.com/a/75193208
+                        // Revert if call failed
+                        if eq(result, 0) {
+                            // Forward the error
+                            returndatacopy(0, 0, returndatasize())
+                            revert(0, returndatasize())
+                        }
+                        leaf := add(leaf, 0x40)
+                        next := add(next, 0x20)
+                    }
+                    w := shr(1, w)
+                    if iszero(w) { break }
+                }
+                // Move free memory pointer
+                mstore(0x40, add(ptr, 0x20))
+                // Load the root
+                ret := mload(ptr)
             }
-            i >>= 1;
         }
-        // Ok, here is my fix, it's mix_in_length
-        return sha256(bytes.concat(temp[0], toLittleEndian(values.length)));
     }
 }
