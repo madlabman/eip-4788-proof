@@ -12,6 +12,7 @@ contract SSZTest is Test {
         bytes32[] withdrawalsRoots;
         bytes32[] withdrawalsProof;
         SSZ.Withdrawal withdrawal;
+        uint8 withdrawalIndex;
         bytes32 blockRoot;
     }
 

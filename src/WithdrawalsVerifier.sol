@@ -25,10 +25,12 @@ contract WithdrawalsVerifier {
     function submitWithdrawal(
         bytes32[] memory blockWithdrawalsRoots,
         bytes32[] memory blockWithdrawalsProof,
-        SSZ.Withdrawal memory withdrawal
+        SSZ.Withdrawal memory withdrawal,
+        uint8 withdrawalIndex
     ) public {
+        bytes32 withdrawalRoot = SSZ.withdrawalHashTreeRoot(withdrawal);
         require(
-            _verifyWithdrawalRoot(blockWithdrawalsRoots, withdrawal),
+            withdrawalRoot == blockWithdrawalsRoots[withdrawalIndex],
             "withdrawal not included"
         );
 
@@ -44,21 +46,6 @@ contract WithdrawalsVerifier {
         );
 
         emit WithdrawalSubmitted(withdrawal.validatorIndex, withdrawal.amount);
-    }
-
-    function _verifyWithdrawalRoot(
-        bytes32[] memory blockWithdrawalsRoots,
-        SSZ.Withdrawal memory withdrawal
-    ) internal pure returns (bool) {
-        bytes32 withdrawalRoot = SSZ.withdrawalHashTreeRoot(withdrawal);
-
-        // Proof of withdrawalRoot probably will require more gas
-        for (uint64 i = 0; i < blockWithdrawalsRoots.length; i++) {
-            if (blockWithdrawalsRoots[i] == withdrawalRoot) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /// @notice Modified version of `verify` from `MerkleProofLib` to support generalized indices and sha256 precompile
@@ -109,7 +96,8 @@ contract WithdrawalsVerifier {
                     if iszero(lt(offset, end)) { break }
                 }
             }
-            if gt(sub(index, 1), 0) {  // index != 1
+            // index != 1
+            if gt(sub(index, 1), 0) {
                 // revert BranchHasMissingItem()
                 mstore(0x00, 0x1b6661c3)
                 revert(0x1c, 0x04)

@@ -16,6 +16,7 @@ contract WithdrawalsVerifierTest is Test {
         bytes32[] blockWithdrawalsRoots;
         bytes32[] blockWithdrawalsProof;
         SSZ.Withdrawal withdrawal;
+        uint8 withdrawalIndex;
         bytes32 blockRoot;
     }
 
@@ -38,7 +39,8 @@ contract WithdrawalsVerifierTest is Test {
         verifier.submitWithdrawal(
             proofJson.blockWithdrawalsRoots,
             proofJson.blockWithdrawalsProof,
-            proofJson.withdrawal
+            proofJson.withdrawal,
+            proofJson.withdrawalIndex
         );
     }
 }

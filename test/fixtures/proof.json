@@ -36,5 +36,6 @@
     "__$2_address": "0xb9d7934878b5fb9610b3fe8a5e441e8fad7e293f",
     "__$3_amount": 15477249
   },
-  "__$3_blockRoot": "0xee4f42b706a74f4cd3cfbff7762549ef76a892cf467aa648a29fdca741245c7b"
+  "__$3_withdrawalIndex": 15,
+  "__$4_blockRoot": "0xee4f42b706a74f4cd3cfbff7762549ef76a892cf467aa648a29fdca741245c7b"
 }
