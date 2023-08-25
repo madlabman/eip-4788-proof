@@ -23,23 +23,27 @@ contract WithdrawalsVerifier {
     }
 
     function submitWithdrawal(
-        bytes32[] memory blockWithdrawalsRoots,
         bytes32[] memory blockWithdrawalsProof,
+        bytes32 blockWithdrawalsRoot,
+        bytes32[] memory withdrawalProof,
         SSZ.Withdrawal memory withdrawal,
         uint8 withdrawalIndex
     ) public {
         bytes32 withdrawalRoot = SSZ.withdrawalHashTreeRoot(withdrawal);
         require(
-            withdrawalRoot == blockWithdrawalsRoots[withdrawalIndex],
-            "withdrawal not included"
+            _verifyProof(
+                withdrawalProof,
+                blockWithdrawalsRoot,
+                withdrawalRoot,
+                withdrawalIndex
+            ),
+            "invalid withdrawal proof"
         );
 
-        bytes32 blockWithdrawalsRoot =
-            SSZ.rootOfBytes32List(blockWithdrawalsRoots);
         bytes32 blockRoot = mockBlockRoot.blockRoot();
 
         require(
-            _verifyBlockRootProof(
+            _verifyProof(
                 blockWithdrawalsProof, blockRoot, blockWithdrawalsRoot, gIndex
             ),
             "invalid withdrawals proof"
@@ -50,7 +54,7 @@ contract WithdrawalsVerifier {
 
     /// @notice Modified version of `verify` from `MerkleProofLib` to support generalized indices and sha256 precompile
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
-    function _verifyBlockRootProof(
+    function _verifyProof(
         bytes32[] memory proof,
         bytes32 root,
         bytes32 leaf,
