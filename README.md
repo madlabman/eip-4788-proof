@@ -1,66 +1,30 @@
-## Foundry
+## EIP-4788 proofs verification
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
-
-Foundry consists of:
-
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
-
-## Documentation
-
-https://book.getfoundry.sh/
+A set of scripts and on-chain code to use EIP-4788 block root to prove specific properties of CL blocks.
 
 ## Usage
 
-### Build
+### Obtain proofs
 
-```shell
-$ forge build
+```bash
+cd script
+yarn install
+# for withdrawal / attestation slashing / proposer slashing accordingly
+node withdrawal.js
+node attestation_slashings.js
+node proposer_slashings.js
 ```
 
 ### Test
 
+Foundry tests read JSON files fixtures and use the contracts from the repository to accepts proofs. 
+
 ```shell
 $ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
 ```
 
 ### Gas Snapshots
 
 ```shell
 $ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
 ```
