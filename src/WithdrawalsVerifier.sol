@@ -23,9 +23,9 @@ contract WithdrawalsVerifier {
     }
 
     function submitWithdrawal(
-        bytes32[] memory blockWithdrawalsProof,
+        bytes32[] calldata blockWithdrawalsProof,
         bytes32 blockWithdrawalsRoot,
-        bytes32[] memory withdrawalProof,
+        bytes32[] calldata withdrawalProof,
         SSZ.Withdrawal memory withdrawal,
         uint8 withdrawalIndex
     ) public {
@@ -55,18 +55,18 @@ contract WithdrawalsVerifier {
     /// @notice Modified version of `verify` from `MerkleProofLib` to support generalized indices and sha256 precompile
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
     function _verifyProof(
-        bytes32[] memory proof,
+        bytes32[] calldata proof,
         bytes32 root,
         bytes32 leaf,
         uint64 index
     ) internal view returns (bool isValid) {
         /// @solidity memory-safe-assembly
         assembly {
-            if mload(proof) {
-                // Initialize `offset` to the offset of `proof` elements in memory.
-                let offset := add(proof, 0x20)
+            if proof.length {
                 // Left shift by 5 is equivalent to multiplying by 0x20.
-                let end := add(offset, shl(5, mload(proof)))
+                let end := add(proof.offset, shl(5, proof.length))
+                // Initialize `offset` to the offset of `proof` in the calldata.
+                let offset := proof.offset
                 // Iterate over proof elements to compute root hash.
                 for { } 1 { } {
                     // Slot of `leaf` in scratch space.
@@ -81,8 +81,7 @@ contract WithdrawalsVerifier {
                     // Store elements to hash contiguously in scratch space.
                     // Scratch space is 64 bytes (0x00 - 0x3f) and both elements are 32 bytes.
                     mstore(scratch, leaf)
-                    mstore(xor(scratch, 0x20), mload(offset))
-
+                    mstore(xor(scratch, 0x20), calldataload(offset))
                     // Call sha256 precompile
                     let result :=
                         staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
