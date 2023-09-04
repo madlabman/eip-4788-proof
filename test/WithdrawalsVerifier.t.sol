@@ -27,7 +27,8 @@ contract WithdrawalsVerifierTest is Test {
 
     function setUp() public {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/test/fixtures/proof.json");
+        string memory path =
+            string.concat(root, "/test/fixtures/withdrawal_proof.json");
         string memory json = vm.readFile(path);
         bytes memory data = json.parseRaw("$");
         proofJson = abi.decode(data, (ProofJson));
