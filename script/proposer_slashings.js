@@ -3,6 +3,7 @@ import { Tree, concatGindices } from '@chainsafe/persistent-merkle-tree';
 
 import { client } from './client.js';
 import { toHex, verifyProof } from './utils.js';
+import { MAX_PROPOSER_SLASHINGS } from '@lodestar/params';
 
 async function main(slot = 6142320, validatorIndex = 552061) {
     const r = await client.getBlockV2(slot);
@@ -73,6 +74,24 @@ async function main(slot = 6142320, validatorIndex = 552061) {
     ret['signedHeader1.slot.proof'] = p.map(toHex);
     ret['signedHeader1.slot.node'] = toHex(node);
     ret['signedHeader1.slot.gIndex'] = gI;
+
+    // Generate lookup table for the signedHeader1.message in different items of the proposerSlashings
+    ret['signedHeader1.message.lookup'] = [];
+
+    let j = 0n;
+    while (j < MAX_PROPOSER_SLASHINGS) {
+        ret['signedHeader1.lookup'].push(
+            concatGindices([
+                blockView.type.getPropertyGindex('body'),
+                blockView.body.type.getPropertyGindex('proposerSlashings'),
+                blockView.body.proposerSlashings.type.getPropertyGindex(0) + j, // probably doesn't work
+                blockView.body.proposerSlashings.get(0).type.getPropertyGindex('signedHeader1'),
+                blockView.body.proposerSlashings.get(0).signedHeader1.type.getPropertyGindex('message'),
+                4n, // one step ahead of fields, I believe
+            ])
+        );
+        j++;
+    }
 
     return ret;
 }
