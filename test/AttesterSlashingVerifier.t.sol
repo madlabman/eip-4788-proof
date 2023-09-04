@@ -9,13 +9,18 @@ import { SSZ } from "../src/SSZ.sol";
 import { BlockRootMock } from "../src/BlockRootMock.sol";
 import { SlashingVerifier } from "../src/SlashingVerifier.sol";
 
-contract SlashingVerifierTest is Test {
+contract AttesterSlashingVerifierTest is Test {
     using stdJson for string;
 
     struct ProofJson {
-        bytes32[] multiProof;
-        uint64 proposerIndex;
+        bytes32[] slotProof;
         uint64 slot;
+        bytes32[] attestation1Proof;
+        bytes32 attestation1Node;
+        uint64 attestation1Shift;
+        bytes32[] attestation2Proof;
+        bytes32 attestation2Node;
+        uint64 attestation2Shift;
         uint8 slashingIndex;
         bytes32 blockRoot;
     }
@@ -27,7 +32,7 @@ contract SlashingVerifierTest is Test {
     function setUp() public {
         string memory root = vm.projectRoot();
         string memory path =
-            string.concat(root, "/test/fixtures/proposerSlashing_proof.json");
+            string.concat(root, "/test/fixtures/attesterSlashing_proof.json");
         string memory json = vm.readFile(path);
         bytes memory data = json.parseRaw("$");
         proofJson = abi.decode(data, (ProofJson));
@@ -37,10 +42,15 @@ contract SlashingVerifierTest is Test {
 
     function test_SumbitProposerSlashing() public {
         // forgefmt: disable-next-item
-        verifier.submitProposerSlashing(
-            proofJson.multiProof,
-            proofJson.proposerIndex,
+        verifier.submitAttesterSlashing(
+            proofJson.slotProof,
             proofJson.slot,
+            proofJson.attestation1Proof,
+            proofJson.attestation1Shift,
+            proofJson.attestation1Node,
+            proofJson.attestation2Proof,
+            proofJson.attestation2Shift,
+            proofJson.attestation2Node,
             proofJson.slashingIndex
         );
     }

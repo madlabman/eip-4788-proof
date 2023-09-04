@@ -9,7 +9,7 @@ contract SlashingVerifier {
     BlockRootMock public mockBlockRoot;
 
     // NOTE: not 100% sure about these values
-    uint64[] signedHeader1MessageLookup = [
+    uint64[16] signedHeader1MessageLookup = [
         99840, // <- this one is correct
         99856,
         99872,
@@ -28,8 +28,16 @@ contract SlashingVerifier {
         100080
     ];
 
+    uint64[2] attesterSlashingLookup = [785];
+
+    // Should be a global index of the slot field in a block
+    uint64 constant slotGindex = 8;
+
     /// @notice Emitted when a proposer slashing is submitted
     event ProposerSlashingSubmitted(uint64 indexed validatorIndex, uint64 slot);
+
+    /// @notice Emitted when an attester slashing is submitted
+    event AttesterSlashingSubmitted(uint64 indexed validatorIndex, uint64 slot);
 
     constructor(address _mockBlockRoot) {
         mockBlockRoot = BlockRootMock(_mockBlockRoot);
@@ -57,9 +65,82 @@ contract SlashingVerifier {
                 leaf,
                 signedHeader1MessageLookup[slashingIndex]
             ),
-            "invalid slot proof"
+            "invalid multiProof"
         );
 
         emit ProposerSlashingSubmitted(proposerIndex, slot);
+    }
+
+    // TODO: implement usage of multiProof
+    function submitAttesterSlashing(
+        bytes32[] calldata slotProof,
+        uint64 slot,
+        bytes32[] calldata attestation1Proof,
+        uint64 attestation1Shift,
+        bytes32 attestation1Node,
+        bytes32[] calldata attestation2Proof,
+        uint64 attestation2Shift,
+        bytes32 attestation2Node,
+        uint8 slashingIndex
+    ) public {
+        bytes32 blockRoot = mockBlockRoot.blockRoot();
+
+        require(
+            SSZ.verifyProof(
+                slotProof, blockRoot, SSZ.toLittleEndian(slot), slotGindex
+            ),
+            "invalid slotProof"
+        );
+
+        uint64 attestation1gIndex = SSZ.concatGindices(
+            attesterSlashingLookup[slashingIndex],
+            8, // attestation1.attestingIndicies
+            1024 + attestation1Shift / 4
+        );
+
+        require(
+            SSZ.verifyProof(
+                attestation1Proof,
+                blockRoot,
+                attestation1Node,
+                attestation1gIndex
+            ),
+            "invalid attestation1IndexProof"
+        );
+
+        uint64 attesterIndex = uint64(
+            uint256(
+                SSZ.toLittleEndian(
+                    uint256(attestation1Node << (attestation1Shift % 4))
+                )
+            )
+        );
+
+        uint64 attestation2gIndex = SSZ.concatGindices(
+            attesterSlashingLookup[slashingIndex],
+            12, // attestation2.attestingIndicies
+            1024 + attestation2Shift / 4
+        );
+
+        require(
+            SSZ.verifyProof(
+                attestation2Proof,
+                blockRoot,
+                attestation2Node,
+                attestation2gIndex
+            ),
+            "invalid attestation2IndexProof"
+        );
+
+        uint64 attesterIndexCopy = uint64(
+            uint256(
+                SSZ.toLittleEndian(
+                    uint256(attestation2Node << (attestation2Shift % 4))
+                )
+            )
+        );
+
+        require(attesterIndex == attesterIndexCopy, "attesterIndex mismatch");
+        // emit AttesterSlashingSubmitted(attesterIndex, slot);
     }
 }
