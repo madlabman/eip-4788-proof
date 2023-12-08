@@ -13,8 +13,6 @@ contract WithdrawalsVerifierTest is Test {
     using stdJson for string;
 
     struct ProofJson {
-        bytes32[] blockWithdrawalsProof;
-        bytes32 blockWithdrawalsRoot;
         bytes32[] withdrawalProof;
         SSZ.Withdrawal withdrawal;
         uint8 withdrawalIndex;
@@ -33,14 +31,12 @@ contract WithdrawalsVerifierTest is Test {
         bytes memory data = json.parseRaw("$");
         proofJson = abi.decode(data, (ProofJson));
         blockRootMock = new BlockRootMock(proofJson.blockRoot);
-        verifier = new WithdrawalsVerifier(address(blockRootMock), 3230);
+        verifier = new WithdrawalsVerifier(address(blockRootMock), 6030);
     }
 
-    function test_SumbitWithdrawal() public {
+    function test_SubmitWithdrawal() public {
         // forgefmt: disable-next-item
         verifier.submitWithdrawal(
-            proofJson.blockWithdrawalsProof,
-            proofJson.blockWithdrawalsRoot,
             proofJson.withdrawalProof,
             proofJson.withdrawal,
             proofJson.withdrawalIndex

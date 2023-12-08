@@ -8,7 +8,9 @@ contract WithdrawalsVerifier {
     // Should be an address of EIP contract
     BlockRootMock public mockBlockRoot;
 
-    // Generalized index of withdrawals
+    uint64 constant MAX_WITHDRAWALS = 2 ** 4;
+
+    // Generalized index of withdrawalsRoot
     uint64 public immutable gIndex;
 
     /// @notice Emitted when a withdrawal is submitted
@@ -20,34 +22,24 @@ contract WithdrawalsVerifier {
     }
 
     function submitWithdrawal(
-        bytes32[] calldata blockWithdrawalsProof,
-        bytes32 blockWithdrawalsRoot,
         bytes32[] calldata withdrawalProof,
         SSZ.Withdrawal memory withdrawal,
         uint8 withdrawalIndex
     ) public {
+        uint64 gI = /* shifting MAX_WITHDRAWALS because of mix_in_length during merkleization */
+            SSZ.concatGindices(gIndex, (MAX_WITHDRAWALS << 1) | withdrawalIndex);
         bytes32 withdrawalRoot = SSZ.withdrawalHashTreeRoot(withdrawal);
-        require(
-            SSZ.verifyProof(
-                withdrawalProof,
-                blockWithdrawalsRoot,
-                withdrawalRoot,
-                withdrawalIndex
-            ),
-            "invalid withdrawal proof"
-        );
-
         bytes32 blockRoot = mockBlockRoot.blockRoot();
 
         require(
             // forgefmt: disable-next-item
             SSZ.verifyProof(
-                blockWithdrawalsProof,
+                withdrawalProof,
                 blockRoot,
-                blockWithdrawalsRoot,
-                gIndex
+                withdrawalRoot,
+                gI
             ),
-            "invalid withdrawals proof"
+            "invalid withdrawal proof"
         );
 
         emit WithdrawalSubmitted(withdrawal.validatorIndex, withdrawal.amount);
