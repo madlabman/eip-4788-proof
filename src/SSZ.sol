@@ -14,6 +14,18 @@ library SSZ {
         uint64 amount;
     }
 
+    // As defined in phase0/beacon-chain.md:356
+    struct Validator {
+        bytes pubkey;
+        bytes32 withdrawalCredentials;
+        uint64 effectiveBalance;
+        bool slashed;
+        uint64 activationEligibilityEpoch;
+        uint64 activationEpoch;
+        uint64 exitEpoch;
+        uint64 withdrawableEpoch;
+    }
+
     /// Inspired by https://github.com/succinctlabs/telepathy-contracts/blob/main/src/libraries/SimpleSerialize.sol#L59
     function withdrawalHashTreeRoot(Withdrawal memory withdrawal)
         internal
@@ -37,6 +49,90 @@ library SSZ {
                 )
             )
         );
+    }
+
+    function validatorHashTreeRoot(Validator memory validator)
+        internal
+        view
+        returns (bytes32 root)
+    {
+        bytes32 pubkeyRoot;
+
+        assembly {
+            // Dynamic data types such as bytes are stored at the specified offset.
+            let offset := mload(validator)
+            // Call sha256 precompile with the pubkey pointer
+            let result :=
+                staticcall(gas(), 0x02, add(offset, 32), 0x40, 0x00, 0x20)
+            // The branch below is copied from https://stackoverflow.com/a/75193208
+            // Revert if call failed
+            if eq(result, 0) {
+                // Forward the error
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+
+            pubkeyRoot := mload(0x00)
+        }
+
+        bytes32[8] memory nodes = [
+            pubkeyRoot,
+            validator.withdrawalCredentials,
+            toLittleEndian(validator.effectiveBalance),
+            toLittleEndian(validator.slashed ? 1 : 0),
+            toLittleEndian(validator.activationEligibilityEpoch),
+            toLittleEndian(validator.activationEpoch),
+            toLittleEndian(validator.exitEpoch),
+            toLittleEndian(validator.withdrawableEpoch)
+        ];
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Count of nodes to hash
+            let count := 8
+
+            // Loop over levels
+            for { } 1 { } {
+                // Loop over nodes at the given depth
+
+                // Initialize `offset` to the offset of `proof` elements in memory.
+                let target := nodes
+                let source := nodes
+                let end := add(source, shl(5, count))
+
+                for { } 1 { } {
+                    // Read next two hashes to hash
+                    mstore(0x00, mload(source))
+                    mstore(0x20, mload(add(source, 0x20)))
+
+                    // Call sha256 precompile
+                    let result :=
+                        staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
+                    // The branch below is copied from https://stackoverflow.com/a/75193208
+                    // Revert if call failed
+                    if eq(result, 0) {
+                        // Forward the error
+                        returndatacopy(0, 0, returndatasize())
+                        revert(0, returndatasize())
+                    }
+
+                    // Store the resulting hash at the target location
+                    mstore(target, mload(0x00))
+
+                    // Advance the pointers
+                    target := add(target, 0x20)
+                    source := add(source, 0x40)
+
+                    if iszero(lt(source, end)) { break }
+                }
+
+                count := shr(1, count)
+                if eq(count, 1) {
+                    root := mload(0x00)
+                    break
+                }
+            }
+        }
     }
 
     // forgefmt: disable-next-item
