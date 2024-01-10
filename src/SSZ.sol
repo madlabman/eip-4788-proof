@@ -64,13 +64,8 @@ library SSZ {
             // Call sha256 precompile with the pubkey pointer
             let result :=
                 staticcall(gas(), 0x02, add(offset, 32), 0x40, 0x00, 0x20)
-            // The branch below is copied from https://stackoverflow.com/a/75193208
-            // Revert if call failed
-            if eq(result, 0) {
-                // Forward the error
-                returndatacopy(0, 0, returndatasize())
-                revert(0, returndatasize())
-            }
+            // Precompile returns no data on OutOfGas error.
+            if eq(result, 0) { revert(0, 0) }
 
             pubkeyRoot := mload(0x00)
         }
@@ -108,13 +103,8 @@ library SSZ {
                     // Call sha256 precompile
                     let result :=
                         staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
-                    // The branch below is copied from https://stackoverflow.com/a/75193208
-                    // Revert if call failed
-                    if eq(result, 0) {
-                        // Forward the error
-                        returndatacopy(0, 0, returndatasize())
-                        revert(0, returndatasize())
-                    }
+
+                    if eq(result, 0) { revert(0, 0) }
 
                     // Store the resulting hash at the target location
                     mstore(target, mload(0x00))
@@ -202,13 +192,8 @@ library SSZ {
                     // Call sha256 precompile
                     let result :=
                         staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
-                    // The branch below is copied from https://stackoverflow.com/a/75193208
-                    // Revert if call failed
-                    if eq(result, 0) {
-                        // Forward the error
-                        returndatacopy(0, 0, returndatasize())
-                        revert(0, returndatasize())
-                    }
+
+                    if eq(result, 0) { revert(0, 0) }
 
                     // Reuse `leaf` to store the hash to reduce stack operations.
                     leaf := mload(0x00)
