@@ -240,8 +240,8 @@ library SSZ {
         pure
         returns (uint64)
     {
-        uint64 powOf2floor = uint64(1 << log2(b));
-        return a * powOf2floor + (b - powOf2floor);
+        uint64 stepBitLen = uint64(log2(b));
+        return uint64(a << stepBitLen | b ^ (1 << stepBitLen));
     }
 
     /// @dev From solady FixedPointMath
