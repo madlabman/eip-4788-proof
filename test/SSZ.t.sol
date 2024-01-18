@@ -22,7 +22,7 @@ contract SSZTest is Test {
 
     function test_concatGIndices() public {
         uint64 expected = 3230;
-        uint64 actual = SSZ.concatGindices(12, 25, 30);
+        uint64 actual = SSZ.concatGindices(SSZ.concatGindices(12, 25), 30);
         assertEq(actual, expected);
     }
 

@@ -84,6 +84,7 @@ library SSZ {
             toLittleEndian(validator.withdrawableEpoch)
         ];
 
+        // TODO: Extract to a function accepting a dynamic array of bytes32?
         /// @solidity memory-safe-assembly
         assembly {
             // Count of nodes to hash
@@ -166,7 +167,7 @@ library SSZ {
         return bytes32(v ? 1 << 248 : 0);
     }
 
-    /// @notice Modified version of `verify` from `MerkleProofLib` to support generalized indices and sha256 precompile
+    /// @notice Modified version of `verify` from `MerkleProofLib` to support generalized indices and sha256 precompile.
     /// @dev Returns whether `leaf` exists in the Merkle tree with `root`, given `proof`.
     function verifyProof(
         bytes32[] calldata proof,
@@ -216,15 +217,6 @@ library SSZ {
             }
             isValid := eq(leaf, root)
         }
-    }
-
-    // TODO: optimize
-    function concatGindices(uint64 a, uint64 b, uint64 c)
-        internal
-        pure
-        returns (uint64)
-    {
-        return concatGindices(concatGindices(a, b), c);
     }
 
     function concatGindices(uint64 a, uint64 b)
