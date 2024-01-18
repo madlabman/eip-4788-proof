@@ -9,15 +9,13 @@ A set of scripts and on-chain code to use EIP-4788 block root to prove specific 
 ```bash
 cd script
 yarn install
-# for withdrawal / attestation slashing / proposer slashing accordingly
-node withdrawal.js
-node attestation_slashings.js
-node proposer_slashings.js
+# reading a state from a json requires a lot of RAM
+node --max-old-space-size=8192 withdrawal.js
 ```
 
 ### Test
 
-Foundry tests read JSON files fixtures and use the contracts from the repository to accepts proofs. 
+Foundry tests read JSON files fixtures and use the contracts from the repository to accepts proofs.
 
 ```shell
 $ forge test
