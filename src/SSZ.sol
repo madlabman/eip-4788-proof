@@ -74,7 +74,7 @@ library SSZ {
             pubkeyRoot,
             validator.withdrawalCredentials,
             toLittleEndian(validator.effectiveBalance),
-            toLittleEndian(validator.slashed ? 1 : 0),
+            toLittleEndian(validator.slashed),
             toLittleEndian(validator.activationEligibilityEpoch),
             toLittleEndian(validator.activationEpoch),
             toLittleEndian(validator.exitEpoch),
@@ -157,6 +157,10 @@ library SSZ {
                 64);
         v = (v >> 128) | (v << 128);
         return bytes32(v);
+    }
+
+    function toLittleEndian(bool v) internal pure returns (bytes32) {
+        return bytes32(v ? 1 << 248 : 0);
     }
 
     /// @notice Modified version of `verify` from `MerkleProofLib` to support generalized indices and sha256 precompile
