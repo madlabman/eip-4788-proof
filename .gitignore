@@ -15,3 +15,8 @@ docs/
 
 # Node
 node_modules/
+
+# envs
+.direnv/
+
+tags
