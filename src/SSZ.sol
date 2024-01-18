@@ -2,6 +2,9 @@
 pragma solidity ^0.8.21;
 
 library SSZ {
+    /// @dev sha256 precompile address.
+    uint8 constant SHA256 = 0x02;
+
     error BranchHasMissingItem();
     error BranchHasExtraItem();
 
@@ -63,7 +66,7 @@ library SSZ {
             let offset := mload(validator)
             // Call sha256 precompile with the pubkey pointer
             let result :=
-                staticcall(gas(), 0x02, add(offset, 32), 0x40, 0x00, 0x20)
+                staticcall(gas(), SHA256, add(offset, 32), 0x40, 0x00, 0x20)
             // Precompile returns no data on OutOfGas error.
             if eq(result, 0) { revert(0, 0) }
 
@@ -102,7 +105,7 @@ library SSZ {
 
                     // Call sha256 precompile
                     let result :=
-                        staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
+                        staticcall(gas(), SHA256, 0x00, 0x40, 0x00, 0x20)
 
                     if eq(result, 0) { revert(0, 0) }
 
@@ -195,7 +198,7 @@ library SSZ {
                     mstore(xor(scratch, 0x20), calldataload(offset))
                     // Call sha256 precompile
                     let result :=
-                        staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
+                        staticcall(gas(), SHA256, 0x00, 0x40, 0x00, 0x20)
 
                     if eq(result, 0) { revert(0, 0) }
 
