@@ -17,12 +17,13 @@ async function main(withdrawalIndex = 0) {
     const { parser } = StreamJson;
     const { chain } = StreamChain;
 
-    // @type {ssz.capella.BeaconState}
+    // @type {ssz.deneb.BeaconState}
     let state;
 
-    // reading previously downloaded state response from disk in a stream fashion (slot 7913600)
-    // $ wget http://testing.mainnet.beacon-api.nimbus.team/eth/v2/debug/beacon/states/7913600
-    const pipeline = chain([fs.createReadStream('7913600'), parser()]);
+    // Reading previously downloaded state response from disk in a stream fashion (slot 7424512)
+    // $ wget http://unstable.prater.beacon-api.nimbus.team/eth/v2/debug/beacon/states/7424512
+    // NOTE: Alternatively, fetch the state using client.debug.getState('7424512');
+    const pipeline = chain([fs.createReadStream('7424512'), parser()]);
 
     // creating a plain object from the read stream
     const asm = Assembler.connectTo(pipeline);
@@ -32,7 +33,7 @@ async function main(withdrawalIndex = 0) {
         });
     });
 
-    state = ssz.capella.BeaconState.fromJson(r.data);
+    state = ssz.deneb.BeaconState.fromJson(r.data);
     const slot = state.slot;
 
     // requesting the corresponding beacon block to fetch withdrawals
@@ -41,19 +42,18 @@ async function main(withdrawalIndex = 0) {
         throw r.error;
     }
 
-    // @type {ssz.capella.BeaconBlock}
+    // @type {ssz.deneb.BeaconBlock}
     const block = r.response.data.message;
 
     let tree,
         gI,
         p,
         overallProof,
-        overallGi,
-        ret = {};
+        overallGi;
 
     // block.root -> state_root
-    tree = new Tree(ssz.capella.BeaconBlock.toView(block).node);
-    gI = ssz.capella.BeaconBlock.getPropertyGindex('stateRoot');
+    tree = new Tree(ssz.deneb.BeaconBlock.toView(block).node);
+    gI = ssz.deneb.BeaconBlock.getPropertyGindex('stateRoot');
     p = tree.getSingleProof(gI);
     const blockRoot = tree.root;
 
@@ -61,10 +61,12 @@ async function main(withdrawalIndex = 0) {
     overallProof = [...p];
 
     // state_root -> withdrawals_root
-    tree = new Tree(ssz.capella.BeaconState.toView(state).node); // consumes a lot of memory
+    tree = new Tree(ssz.deneb.BeaconState.toView(state).node); // consumes a lot of memory
     gI = concatGindices([
-        ssz.capella.BeaconState.getPropertyGindex('latestExecutionPayloadHeader'),
-        ssz.capella.ExecutionPayloadHeader.getPropertyGindex('withdrawalsRoot'),
+        ssz.deneb.BeaconState.getPropertyGindex(
+            'latestExecutionPayloadHeader'
+        ),
+        ssz.deneb.ExecutionPayloadHeader.getPropertyGindex('withdrawalsRoot'),
     ]);
     p = tree.getSingleProof(gI);
 
@@ -73,7 +75,11 @@ async function main(withdrawalIndex = 0) {
     overallProof = [...p, ...overallProof];
 
     // withdrawals_root -> withdrawal[idx].root
-    tree = new Tree(ssz.capella.Withdrawals.toView(block.body.executionPayload.withdrawals).node);
+    tree = new Tree(
+        ssz.capella.Withdrawals.toView(
+            block.body.executionPayload.withdrawals
+        ).node
+    );
     gI = ssz.capella.Withdrawals.getPropertyGindex(withdrawalIndex);
     p = tree.getSingleProof(gI);
 
@@ -83,7 +89,7 @@ async function main(withdrawalIndex = 0) {
     const withdrawal = block.body.executionPayload.withdrawals[withdrawalIndex];
     tree = new Tree(ssz.capella.Withdrawal.toView(withdrawal).node);
 
-    // check
+    // Sanity check: verify gIndex and proof match.
     verifyProof(blockRoot, overallGi, overallProof, tree.root);
 
     // Since EIP-4788 stores parentRoot, we have to find the descendant block of

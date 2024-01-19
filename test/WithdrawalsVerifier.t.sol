@@ -18,7 +18,7 @@ contract WithdrawalsVerifierTest is Test {
         bytes32 blockRoot;
     }
 
-    uint256 constant CAPELLA_ZERO_WITHDRAWAL_GINDEX = 192960;
+    uint256 constant DENEB_ZERO_WITHDRAWAL_GINDEX = 385472;
 
     WithdrawalsVerifier public verifier;
     ProofJson public proofJson;
@@ -30,7 +30,7 @@ contract WithdrawalsVerifierTest is Test {
         string memory json = vm.readFile(path);
         bytes memory data = json.parseRaw("$");
         proofJson = abi.decode(data, (ProofJson));
-        verifier = new WithdrawalsVerifier(CAPELLA_ZERO_WITHDRAWAL_GINDEX);
+        verifier = new WithdrawalsVerifier(DENEB_ZERO_WITHDRAWAL_GINDEX);
     }
 
     function test_SubmitWithdrawal() public {
