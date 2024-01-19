@@ -23,7 +23,7 @@ async function main(withdrawalIndex = 0) {
     // Reading previously downloaded state response from disk in a stream fashion (slot 7424512)
     // $ wget http://unstable.prater.beacon-api.nimbus.team/eth/v2/debug/beacon/states/7424512
     // NOTE: Alternatively, fetch the state using client.debug.getState('7424512');
-    const pipeline = chain([fs.createReadStream('7424512'), parser()]);
+    const pipeline = chain([fs.createReadStream('state.json'), parser()]);
 
     // creating a plain object from the read stream
     const asm = Assembler.connectTo(pipeline);
