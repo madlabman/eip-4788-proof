@@ -6,7 +6,6 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { Vm } from "forge-std/Vm.sol";
 
 import { SSZ } from "../src/SSZ.sol";
-import { BlockRootMock } from "../src/BlockRootMock.sol";
 import { WithdrawalsVerifier } from "../src/WithdrawalsVerifier.sol";
 
 contract WithdrawalsVerifierTest is Test {
@@ -19,8 +18,9 @@ contract WithdrawalsVerifierTest is Test {
         bytes32 blockRoot;
     }
 
+    uint256 constant CAPELLA_ZERO_WITHDRAWAL_GINDEX = 192960;
+
     WithdrawalsVerifier public verifier;
-    BlockRootMock public blockRootMock;
     ProofJson public proofJson;
 
     function setUp() public {
@@ -30,16 +30,24 @@ contract WithdrawalsVerifierTest is Test {
         string memory json = vm.readFile(path);
         bytes memory data = json.parseRaw("$");
         proofJson = abi.decode(data, (ProofJson));
-        blockRootMock = new BlockRootMock(proofJson.blockRoot);
-        verifier = new WithdrawalsVerifier(address(blockRootMock), 6030);
+        verifier = new WithdrawalsVerifier(CAPELLA_ZERO_WITHDRAWAL_GINDEX);
     }
 
     function test_SubmitWithdrawal() public {
+        uint64 ts = 31337;
+
+        vm.mockCall(
+            verifier.BEACON_ROOTS(),
+            abi.encode(ts),
+            abi.encode(proofJson.blockRoot)
+        );
+
         // forgefmt: disable-next-item
         verifier.submitWithdrawal(
             proofJson.withdrawalProof,
             proofJson.withdrawal,
-            proofJson.withdrawalIndex
+            proofJson.withdrawalIndex,
+            ts
         );
     }
 }

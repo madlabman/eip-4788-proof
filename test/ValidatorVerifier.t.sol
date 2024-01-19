@@ -6,7 +6,6 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { Vm } from "forge-std/Vm.sol";
 
 import { SSZ } from "../src/SSZ.sol";
-import { BlockRootMock } from "../src/BlockRootMock.sol";
 import { ValidatorVerifier } from "../src/ValidatorVerifier.sol";
 
 contract ValidatorVerifierTest is Test {
