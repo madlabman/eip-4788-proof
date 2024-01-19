@@ -8,10 +8,12 @@ import StreamJson from 'stream-json';
 import { Tree, concatGindices } from '@chainsafe/persistent-merkle-tree';
 import { ssz } from '@lodestar/types';
 
-import { client } from './client.js';
+import { createClient } from './client.js';
 import { toHex, verifyProof } from './utils.js';
 
 async function main(withdrawalIndex = 0) {
+    const client = await createClient();
+
     const { parser } = StreamJson;
     const { chain } = StreamChain;
 
@@ -84,15 +86,30 @@ async function main(withdrawalIndex = 0) {
     // check
     verifyProof(blockRoot, overallGi, overallProof, tree.root);
 
+    // Since EIP-4788 stores parentRoot, we have to find the descendant block of
+    // the block from the state.
+    r = await client.beacon.getBlockHeaders({ parentRoot: blockRoot });
+    if (!r.ok) {
+        throw r.error;
+    }
+
+    const nextBlock = r.response.data[0];
+    if (!nextBlock) {
+        throw new Error('No block to fetch timestamp from');
+    }
+
     // create output for the Verifier contract
-    ret = {
-        ...ret,
-        proof: overallProof.map(toHex),
+    return {
         blockRoot: toHex(blockRoot),
-        withdrawal: withdrawal,
+        proof: overallProof.map(toHex),
+        withdrawal: {
+            ...withdrawal,
+            address: toHex(withdrawal.address),
+        },
+        withdrawalIndex: withdrawalIndex,
+        ts: client.slotToTS(nextBlock.header.message.slot),
     };
 
-    return ret;
 }
 
 main(9).then(console.log).catch(console.error);

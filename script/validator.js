@@ -8,10 +8,12 @@ import StreamJson from 'stream-json';
 import { ssz } from '@lodestar/types';
 import { Tree, concatGindices } from '@chainsafe/persistent-merkle-tree';
 
-import { client } from './client.js';
+import { createClient } from './client.js';
 import { toHex, verifyProof } from './utils.js';
 
 async function main(validatorIndex = 0) {
+    const client = await createClient();
+
     const { parser } = StreamJson;
     const { chain } = StreamChain;
 
@@ -86,11 +88,11 @@ async function main(validatorIndex = 0) {
     }
 
     return {
+        blockRoot: toHex(blockRoot),
         proof: overallProof.map(toHex),
         validator: json.data.validators[validatorIndex],
         validatorIndex: validatorIndex,
-        blockRoot: toHex(blockRoot),
-        nextSlot: nextBlock.header.message.slot,
+        ts: client.slotToTS(nextBlock.header.message.slot),
     };
 }
 
