@@ -173,7 +173,7 @@ library SSZ {
         bytes32[] calldata proof,
         bytes32 root,
         bytes32 leaf,
-        uint64 index
+        uint256 index
     ) internal view returns (bool isValid) {
         /// @solidity memory-safe-assembly
         assembly {

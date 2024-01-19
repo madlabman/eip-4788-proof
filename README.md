@@ -10,7 +10,7 @@ A set of scripts and on-chain code to use EIP-4788 block root to prove specific 
 cd script
 yarn install
 # reading a state from a json requires a lot of RAM
-node --max-old-space-size=8192 withdrawal.js
+node --max-old-space-size=4096 withdrawal.js
 ```
 
 ### Test

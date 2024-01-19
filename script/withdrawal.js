@@ -1,5 +1,4 @@
-// NOTE: run with node --max-old-space-size=8192
-
+// NOTE: run with node --max-old-space-size=4096 withdrawal.js
 import fs from 'fs';
 
 import Assembler from 'stream-json/Assembler.js';
@@ -35,7 +34,7 @@ async function main(withdrawalIndex = 0) {
     const slot = state.slot;
 
     // requesting the corresponding beacon block to fetch withdrawals
-    r = await client.getBlockV2(slot);
+    r = await client.beacon.getBlockV2(slot);
     if (!r.ok) {
         throw r.error;
     }
