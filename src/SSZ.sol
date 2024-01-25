@@ -29,6 +29,15 @@ library SSZ {
         uint64 withdrawableEpoch;
     }
 
+    // As defined in phase0/beacon-chain.md:436
+    struct BeaconBlockHeader {
+        uint64 slot;
+        uint64 proposerIndex;
+        bytes32 parentRoot;
+        bytes32 stateRoot;
+        bytes32 bodyRoot;
+    }
+
     /// Inspired by https://github.com/succinctlabs/telepathy-contracts/blob/main/src/libraries/SimpleSerialize.sol#L59
     function withdrawalHashTreeRoot(Withdrawal memory withdrawal)
         internal
@@ -109,6 +118,72 @@ library SSZ {
                         staticcall(gas(), SHA256, 0x00, 0x40, 0x00, 0x20)
 
                     if eq(result, 0) { revert(0, 0) }
+
+                    // Store the resulting hash at the target location
+                    mstore(target, mload(0x00))
+
+                    // Advance the pointers
+                    target := add(target, 0x20)
+                    source := add(source, 0x40)
+
+                    if iszero(lt(source, end)) { break }
+                }
+
+                count := shr(1, count)
+                if eq(count, 1) {
+                    root := mload(0x00)
+                    break
+                }
+            }
+        }
+    }
+
+    function beaconHeaderHashTreeRoot(BeaconBlockHeader memory header)
+        internal
+        view
+        returns (bytes32 root)
+    {
+        bytes32[8] memory nodes = [
+            toLittleEndian(header.slot),
+            toLittleEndian(header.proposerIndex),
+            header.parentRoot,
+            header.stateRoot,
+            header.bodyRoot,
+            bytes32(0),
+            bytes32(0),
+            bytes32(0)
+        ];
+
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Count of nodes to hash
+            let count := 8
+
+            // Loop over levels
+            // prettier-ignore
+            for { } 1 { } {
+                // Loop over nodes at the given depth
+
+                // Initialize `offset` to the offset of `proof` elements in memory.
+                let target := nodes
+                let source := nodes
+                let end := add(source, shl(5, count))
+
+                // prettier-ignore
+                for { } 1 { } {
+                    // TODO: Can be replaced with `mcopy` once it's available, see EIP-5656.
+                    // Read next two hashes to hash
+                    mstore(0x00, mload(source))
+                    mstore(0x20, mload(add(source, 0x20)))
+
+                    // Call sha256 precompile
+                    let result :=
+                        staticcall(gas(), 0x02, 0x00, 0x40, 0x00, 0x20)
+
+                    if eq(result, 0) {
+                        // Precompiles returns no data on OutOfGas error.
+                        revert(0, 0)
+                    }
 
                     // Store the resulting hash at the target location
                     mstore(target, mload(0x00))
