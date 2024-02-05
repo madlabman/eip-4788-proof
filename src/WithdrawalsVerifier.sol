@@ -27,7 +27,13 @@ contract WithdrawalsVerifier {
         uint8 withdrawalIndex,
         uint64 ts
     ) public {
-        uint256 gI = gIndex | withdrawalIndex;
+        // forgefmt: disable-next-item
+        require(
+            withdrawalIndex < MAX_WITHDRAWALS,
+            "withdrawal index out of range"
+        );
+
+        uint256 gI = gIndex + withdrawalIndex;
         bytes32 withdrawalRoot = SSZ.withdrawalHashTreeRoot(withdrawal);
         bytes32 blockRoot = getParentBlockRoot(ts);
 

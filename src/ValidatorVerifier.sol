@@ -32,7 +32,7 @@ contract ValidatorVerifier {
             "validator index out of range"
         );
 
-        uint256 gI = gIndex | validatorIndex;
+        uint256 gI = gIndex + validatorIndex;
         bytes32 validatoRoot = SSZ.validatorHashTreeRoot(validator);
         bytes32 blockRoot = getParentBlockRoot(ts);
 
