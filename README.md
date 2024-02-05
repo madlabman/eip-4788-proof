@@ -11,18 +11,14 @@ properties of CL blocks.
 cd script
 yarn install
 
-# To avoid downloading the same state multiple times reading from a local JSON
-# file with a state structure is used. An example command for downloading a
-# state are the following one. Choose the corresponding state identifier.
-wget http://127.0.0.1:5052/eth/v2/debug/beacon/states/finalized > state.json
-
 # Provide an address of a CL API endpoint.
 export BEACON_NODE_URL=http://127.0.0.1:5052
-# Reading a state from a json requires a lot of RAM, so override the default
-# node head size.
-node --max-old-space-size=4096 withdrawal.js
-node --max-old-space-size=4096 validator.js
+node withdrawal.js
+node validator.js
 ```
+
+Look into the corresponding scripts and modify the required values such as
+**slot**, **validator index**, **withdrawal index**.
 
 The scripts output the data required too make a proof verifiable onchain with
 the contracts presented in this repository. See tests for example usage.
