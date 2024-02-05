@@ -1,79 +1,44 @@
-// NOTE: run with node --max-old-space-size=4096 validator.js
-import fs from 'fs';
-
-import Assembler from 'stream-json/Assembler.js';
-import StreamChain from 'stream-chain';
-import StreamJson from 'stream-json';
-
 import { ssz } from '@lodestar/types';
-import { Tree, concatGindices } from '@chainsafe/persistent-merkle-tree';
+import { concatGindices, createProof, ProofType } from '@chainsafe/persistent-merkle-tree';
 
 import { createClient } from './client.js';
 import { toHex, verifyProof } from './utils.js';
 
-async function main(validatorIndex = 0) {
+const BeaconState = ssz.deneb.BeaconState;
+const BeaconBlock = ssz.deneb.BeaconBlock;
+
+async function main(slot = 0, validatorIndex = 0) {
     const client = await createClient();
 
-    const { parser } = StreamJson;
-    const { chain } = StreamChain;
+    let r;
 
-    // Reading previously downloaded state response from disk in a stream fashion (slot 7424512)
-    // $ wget http://unstable.prater.beacon-api.nimbus.team/eth/v2/debug/beacon/states/7424512
-    // NOTE: Alternatively, fetch the state using client.debug.getState('7424512');
-    const pipeline = chain([fs.createReadStream('state.json'), parser()]);
-
-    // Creating a plain object from the read stream.
-    const asm = Assembler.connectTo(pipeline);
-    const json = await new Promise((resolve) => {
-        asm.on('done', function (r) {
-            resolve(r.current);
-        });
-    });
-
-    const state = ssz.deneb.BeaconState.fromJson(json.data);
-
-    // Find a block corresponding to the state.
-    let r = await client.beacon.getBlockV2(state.slot);
+    r = await client.debug.getStateV2(slot, 'ssz');
     if (!r.ok) {
         throw r.error;
     }
 
-    const block = r.response.data.message;
+    const stateView = BeaconState.deserializeToView(r.response);
 
-    // prettier-ignore
-    let tree,
-        gI,
-        p,
-        overallProof,
-        overallGi;
+    r = await client.beacon.getBlockV2(slot);
+    if (!r.ok) {
+        throw r.error;
+    }
 
-    // block_root -> state_root
-    tree = new Tree(ssz.deneb.BeaconBlock.toView(block).node);
-    gI = ssz.deneb.BeaconBlock.getPropertyGindex('stateRoot');
-    p = tree.getSingleProof(gI);
-    const blockRoot = tree.root;
+    const blockView = BeaconBlock.toView(r.response.data.message);
+    const blockRoot = blockView.hashTreeRoot();
 
-    overallGi = gI;
-    overallProof = [...p];
-
-    // state_root -> validators -> [validatorIndex]
-    gI = concatGindices([
-        ssz.deneb.BeaconState.getPropertyGindex('validators'),
-        ssz.phase0.Validators.getPropertyGindex(validatorIndex),
+    const tree = blockView.tree.clone();
+    // Patching the tree by attaching the state in the `stateRoot` field of the block.
+    tree.setNode(blockView.type.getPropertyGindex('stateRoot'), stateView.node);
+    // Create a proof for the state of the validator against the block.
+    const gI = concatGindices([
+        blockView.type.getPathInfo(['stateRoot']).gindex,
+        stateView.type.getPathInfo(['validators', validatorIndex]).gindex,
     ]);
-
-    tree = new Tree(ssz.deneb.BeaconState.toView(state).node);
-    p = tree.getSingleProof(gI);
-
-    overallGi = concatGindices([overallGi, gI]);
-    // Proofs are built from bottom up, so we need to prepend the proof.
-    overallProof = [...p, ...overallProof];
-
-    const validator = state.validators[validatorIndex];
-    tree = new Tree(ssz.phase0.Validator.toView(validator).node);
+    const p = createProof(tree.rootNode, { type: ProofType.single, gindex: gI });
 
     // Sanity check: verify gIndex and proof match.
-    verifyProof(blockRoot, overallGi, overallProof, tree.root);
+    verifyProof(blockRoot, gI, p.witnesses, stateView.validators.get(validatorIndex).hashTreeRoot());
 
     // Since EIP-4788 stores parentRoot, we have to find the descendant block of
     // the block from the state.
@@ -89,11 +54,11 @@ async function main(validatorIndex = 0) {
 
     return {
         blockRoot: toHex(blockRoot),
-        proof: overallProof.map(toHex),
-        validator: json.data.validators[validatorIndex],
+        proof: p.witnesses.map(toHex),
+        validator: stateView.validators.type.elementType.toJson(stateView.validators.get(validatorIndex)),
         validatorIndex: validatorIndex,
         ts: client.slotToTS(nextBlock.header.message.slot),
     };
 }
 
-main(44444).then(console.log).catch(console.error);
+main(7424512, 88888).then(console.log).catch(console.error);
