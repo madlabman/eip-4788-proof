@@ -18,7 +18,7 @@ contract WithdrawalsVerifierTest is Test {
         bytes32 blockRoot;
     }
 
-    uint256 constant DENEB_ZERO_WITHDRAWAL_GINDEX = 385472;
+    uint256 constant DENEB_ZERO_WITHDRAWAL_GINDEX = 206272;
 
     WithdrawalsVerifier public verifier;
     ProofJson public proofJson;
