@@ -6,8 +6,14 @@ import { toHex, verifyProof } from './utils.js';
 
 const BeaconBlock = ssz.deneb.BeaconBlock;
 
+/**
+ * @param {string|number} slot
+ * @param {number} validatorIndex
+ */
 async function main(slot = 'finalized', withdrawalIndex = 0) {
     const client = await createClient();
+
+    /** @type {import('@lodestar/api').ApiClientResponse} */
     let r;
 
     // Requesting the corresponding beacon block to fetch withdrawals.
@@ -32,7 +38,8 @@ async function main(slot = 'finalized', withdrawalIndex = 0) {
         throw r.error;
     }
 
-    const nextBlock = r.response.data[0];
+    /** @type {import('@lodestar/types/lib/phase0/types.js').SignedBeaconBlockHeader} */
+    const nextBlock = r.response.data[0]?.header;
     if (!nextBlock) {
         throw new Error('No block to fetch timestamp from');
     }
@@ -43,7 +50,7 @@ async function main(slot = 'finalized', withdrawalIndex = 0) {
         proof: p.witnesses.map(toHex),
         withdrawal: nav.type.toJson(blockView.body.executionPayload.withdrawals.get(withdrawalIndex)),
         withdrawalIndex: withdrawalIndex,
-        ts: client.slotToTS(nextBlock.header.message.slot),
+        ts: client.slotToTS(nextBlock.message.slot),
         gI: nav.gindex,
     };
 }

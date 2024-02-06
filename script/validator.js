@@ -7,9 +7,14 @@ import { toHex, verifyProof } from './utils.js';
 const BeaconState = ssz.deneb.BeaconState;
 const BeaconBlock = ssz.deneb.BeaconBlock;
 
-async function main(slot = 0, validatorIndex = 0) {
+/**
+ * @param {string|number} slot
+ * @param {number} validatorIndex
+ */
+async function main(slot = 'finalized', validatorIndex = 0) {
     const client = await createClient();
 
+    /** @type {import('@lodestar/api').ApiClientResponse} */
     let r;
 
     r = await client.debug.getStateV2(slot, 'ssz');
@@ -27,6 +32,7 @@ async function main(slot = 0, validatorIndex = 0) {
     const blockView = BeaconBlock.toView(r.response.data.message);
     const blockRoot = blockView.hashTreeRoot();
 
+    /** @type {import('@chainsafe/persistent-merkle-tree').Tree} */
     const tree = blockView.tree.clone();
     // Patching the tree by attaching the state in the `stateRoot` field of the block.
     tree.setNode(blockView.type.getPropertyGindex('stateRoot'), stateView.node);
@@ -35,6 +41,7 @@ async function main(slot = 0, validatorIndex = 0) {
         blockView.type.getPathInfo(['stateRoot']).gindex,
         stateView.type.getPathInfo(['validators', validatorIndex]).gindex,
     ]);
+    /** @type {import('@chainsafe/persistent-merkle-tree').SingleProof} */
     const p = createProof(tree.rootNode, { type: ProofType.single, gindex: gI });
 
     // Sanity check: verify gIndex and proof match.
@@ -47,7 +54,8 @@ async function main(slot = 0, validatorIndex = 0) {
         throw r.error;
     }
 
-    const nextBlock = r.response.data[0];
+    /** @type {import('@lodestar/types/lib/phase0/types.js').SignedBeaconBlockHeader} */
+    const nextBlock = r.response.data[0]?.header;
     if (!nextBlock) {
         throw new Error('No block to fetch timestamp from');
     }
@@ -57,7 +65,8 @@ async function main(slot = 0, validatorIndex = 0) {
         proof: p.witnesses.map(toHex),
         validator: stateView.validators.type.elementType.toJson(stateView.validators.get(validatorIndex)),
         validatorIndex: validatorIndex,
-        ts: client.slotToTS(nextBlock.header.message.slot),
+        ts: client.slotToTS(nextBlock.message.slot),
+        gI,
     };
 }
 
